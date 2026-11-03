@@ -1,0 +1,365 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>기말특강 멘트 생성기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap">
+<style>
+  /* Layout: a two-column workbench — settings on the left, the finished message on the right; stacks on phones. */
+  :root {
+    --bg: #F3F5F8;
+    --panel: #FFFFFF;
+    --fg: #1A2230;
+    --muted: #5C6675;
+    --line: #D9DEE6;
+    --accent: #1F5FA8;
+    --accent-soft: #E4EDF8;
+    --accent-fg: #FFFFFF;
+    --ok: #1E7F4F;
+    --font-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --font-display: "Noto Serif KR", "Apple Myungjo", "Batang", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12171F; --panel: #1A212B; --fg: #E6EAF0; --muted: #98A2B3; --line: #2C3542;
+      --accent: #6FA3E6; --accent-soft: #1F2E42; --accent-fg: #0E1420; --ok: #5CC28A; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12171F; --panel: #1A212B; --fg: #E6EAF0; --muted: #98A2B3; --line: #2C3542;
+    --accent: #6FA3E6; --accent-soft: #1F2E42; --accent-fg: #0E1420; --ok: #5CC28A; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px; line-height: 1.55; }
+  .wrap {
+    max-width: 1180px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 24px 40px;
+  }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 20px; }
+  h1 { font-family: var(--font-display); font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .controls { display: grid; gap: 18px; padding: 18px; }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }
+  legend, label.lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 0; margin-bottom: 6px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label { position: relative; }
+  .seg input { position: absolute; opacity: 0; inset: 0; }
+  .seg span {
+    display: inline-block; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--panel); color: var(--fg); cursor: pointer; font-weight: 500; user-select: none;
+  }
+  .seg input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input[type="text"], select {
+    width: 100%; font: inherit; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--panel); color: var(--fg);
+  }
+  input[type="text"]:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0; }
+  .cat { display: grid; gap: 6px; }
+  .cat-title { display: flex; align-items: baseline; gap: 8px; font-weight: 600; margin-top: 4px; }
+  .cat-title small { color: var(--muted); font-weight: 400; }
+  .check { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .check:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .check input { margin-top: 3px; accent-color: var(--accent); }
+  .check .name { font-weight: 500; }
+  .check .meta { color: var(--muted); font-size: 12px; }
+  .output { display: grid; gap: 12px; padding: 18px; }
+  .out-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .out-head .what { font-weight: 600; }
+  .out-head .what small { color: var(--muted); font-weight: 400; margin-left: 8px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--accent-fg); cursor: pointer;
+  }
+  button.ghost { background: var(--panel); color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  textarea {
+    width: 100%; min-height: 560px; font: inherit; line-height: 1.7; padding: 14px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--panel); color: var(--fg); resize: vertical;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .status { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .status .ok { color: var(--ok); font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) { .seg span, .check, button { transition: background-color .15s, border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>기말특강 멘트 생성기</h1>
+    <p>학년과 멘트 유형을 고르고 결제링크를 붙여 학부모 발송용 멘트를 만듭니다.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel controls" aria-label="설정">
+      <div>
+        <label class="lbl" for="teacher">선생님 이름</label>
+        <input type="text" id="teacher" placeholder="예: 손성재" autocomplete="off">
+        <p class="hint">비워두면 멘트에 [    ] 빈칸으로 남습니다.</p>
+      </div>
+
+      <fieldset>
+        <legend>학년</legend>
+        <div class="seg" id="grade">
+          <label><input type="radio" name="grade" value="중1" id="g-m1"><span>중1</span></label>
+          <label><input type="radio" name="grade" value="중2" id="g-m2"><span>중2</span></label>
+          <label><input type="radio" name="grade" value="중3" id="g-m3"><span>중3</span></label>
+          <label><input type="radio" name="grade" value="고1" id="g-h1" checked><span>고1</span></label>
+          <label><input type="radio" name="grade" value="고2" id="g-h2"><span>고2</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset id="rangeBox" hidden>
+        <legend>중3 시험범위</legend>
+        <div class="seg">
+          <label><input type="radio" name="range" value="A" id="r-a" checked><span>삼각비 ~ 원주각의 활용</span></label>
+          <label><input type="radio" name="range" value="B" id="r-b"><span>원의 성질 ~ 통계</span></label>
+        </div>
+        <p class="hint">감성형은 두 범위 공통 멘트를 씁니다.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>멘트 유형</legend>
+        <div class="seg">
+          <label><input type="radio" name="tone" value="info" id="t-info" checked><span>정보형</span></label>
+          <label><input type="radio" name="tone" value="emo" id="t-emo"><span>감성형</span></label>
+        </div>
+      </fieldset>
+
+      <div>
+        <label class="lbl" for="product">결제링크 상품</label>
+        <select id="product">
+          <option value="MH">12시간 고등 — MH 수학 4주 집중PT_3시간</option>
+          <option value="MM">12시간 초중등 — MM 수학 4주 집중PT_3시간</option>
+          <option value="BASE">6시간 — 수학 3주 집중PT_2시간</option>
+          <option value="NONE">링크 없이 멘트만</option>
+        </select>
+        <p class="hint">학년을 바꾸면 기본값(중: 12시간 초중등, 고: 12시간 고등)으로 돌아갑니다.</p>
+      </div>
+
+      <fieldset>
+        <legend>링크 구성</legend>
+        <div class="seg">
+          <label><input type="radio" name="days" value="both" id="d-both" checked><span>주간 + 주말</span></label>
+          <label><input type="radio" name="days" value="주간" id="d-wd"><span>주간만</span></label>
+          <label><input type="radio" name="days" value="주말" id="d-we"><span>주말만</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>기타</legend>
+        <label class="check"><input type="checkbox" id="imgMark"><div><div class="name">(이미지 2개) 자리 표시 넣기</div><div class="meta">인사말 다음 줄에 넣습니다</div></div></label>
+      </fieldset>
+    </section>
+
+    <section class="panel output" aria-label="완성 멘트">
+      <div class="out-head">
+        <div class="what" id="what">고1 · 정보형</div>
+        <div class="btns">
+          <button type="button" id="copyBtn">멘트 복사</button>
+          <button type="button" class="ghost" id="resetBtn">다시 생성</button>
+        </div>
+      </div>
+      <textarea id="out" spellcheck="false" aria-label="완성 멘트"></textarea>
+      <div class="status"><span id="count"></span><span id="copied"></span></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var PRODUCTS = {
+    MM:   { name: "MM 수학 4주 집중PT_3시간", weeks: "4주", hours: "12시간",
+            "주간": "https://payment.mildang.kr/mQ4LosxfMBasHC4QMXTSt", "주말": "https://payment.mildang.kr/3XCo5w8yhxQ266rwNjkRc" },
+    MH:   { name: "MH 수학 4주 집중PT_3시간", weeks: "4주", hours: "12시간",
+            "주간": "https://payment.mildang.kr/7Saxs2u3y1DTr4T0rCpJi", "주말": "https://payment.mildang.kr/LNEbjJy1TRExa5QaWAeHz" },
+    BASE: { name: "수학 3주 집중PT_2시간", weeks: "3주", hours: "6시간",
+            "주간": "https://payment.mildang.kr/HA__1dhd0JOtSMkOYEcAn", "주말": "https://payment.mildang.kr/Du76zOhsqr6RS_giPjoxD" }
+  };
+  var LABELS = { MH: "12시간 고등", MM: "12시간 초중등", BASE: "6시간" };
+
+  var GREETING = "안녕하세요, 학부모님. 밀당PT 수학 {NAME} 선생님입니다.";
+  var COMMON_GAP = "내신 시험은 기본 개념+유형을 확인하는 문제뿐 아니라 여러 개념을 결합하거나 기존 유형을 변형한 응용~심화 문제까지 출제될 수 있습니다.\n따라서 개념을 이해하는 것과 실제 시험에서 응용문제를 해결하는 것 사이에는 분명한 차이가 있습니다.\n\n그래서 이번 특강에서는 단순히 개념과 유형을 한 번 더 확인하는 데 그치지 않습니다.";
+  var COMMON_GOAL = "를 통해 학생들이 문제를 마주했을 때 막막함을 느끼는 것이 아니라, 주어진 조건을 분석하고 적절한 개념과 풀이 방향을 스스로 찾아낼 수 있도록 하는 것이 이번 특강의 목표입니다.";
+
+  // Each template: intro (after greeting), body (after image marker), list (①~④), closing. {NAME} replaced.
+  var INFO = {
+    "중1": {
+      intro: "다가오는 2학기 기말고사에서 확실한 성적 향상을 이끌어내고 실전 경쟁력을 높이기 위해 [중1 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "이번 기말고사 범위에서 학생들이 어려움을 느끼기 쉬운 부분은 '작도와 합동·평면도형의 논리적 서술'과 '입체도형의 겉넓이·부피 응용 문제'입니다.\n\n먼저 기본도형과 작도·합동 단원은 중학교에서 처음으로 '왜 그런지'를 조건에 근거해 설명해야 하는 단원입니다. 삼각형의 합동 조건을 알고 있더라도, 문제에서 주어진 조건이 어떤 합동 조건에 해당하는지 찾아내고 그 과정을 순서대로 서술하는 것은 전혀 다른 능력입니다. 특히 서술형 문항에서는 답이 맞아도 근거가 빠지면 감점되기 때문에, 조건을 읽고 논리 구조를 세우는 훈련이 반드시 필요합니다. 이어지는 평면도형 단원에서는 다각형의 내각·외각, 부채꼴의 호의 길이와 넓이가 여러 도형이 결합된 형태로 출제되어 공식 암기만으로는 대응하기 어렵습니다.\n\n또한, 입체도형 단원에서는 다면체와 회전체의 성질을 이해한 뒤 겉넓이와 부피를 구해야 하는데, 단순한 각기둥·원기둥이 아니라 일부가 잘린 입체, 구멍 뚫린 입체, 회전시켜 만든 도형처럼 변형된 형태가 자주 출제됩니다. 이런 문제는 입체를 머릿속에서 전개하거나 분해하는 공간 감각과 계산력을 동시에 요구하기 때문에, 개념을 알아도 실수가 잦은 단원입니다. 더불어 자료의 정리와 해석 단원은 도수분포표·히스토그램·상대도수를 서로 변환하며 읽어내야 하는데, 표의 빈칸을 채우거나 두 집단을 비교하는 문제에서 조건을 놓치는 학생이 많습니다. 이 단원들은 중2 도형의 성질과 중3 통계로 그대로 이어지는 기초인 만큼, 지금 확실히 다져두는 것이 중요합니다.",
+      list: "① 작도·합동과 평면도형의 핵심 개념 및 서술형 논리 전개 훈련\n② 변형된 입체도형의 겉넓이·부피 응용문제 해결 훈련\n③ 도수분포표·히스토그램·상대도수의 해석 및 응용 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      closing: "정규 수업에서 다룬 핵심 개념을 바탕으로, 추가적인 유형 학습과 응용문제 훈련을 통해 실전 문제 해결력을 높일 예정입니다. 특히 중1 2학기 기말고사는 중학교 첫 1년을 마무리하는 시험이자, 중2부터 본격적으로 어려워지는 도형 단원의 출발점이 되는 시험입니다. 이번 특강을 통해 핵심 개념부터 고난도 응용까지 체계적으로 정리하고, 중학교 첫해를 좋은 성적과 단단한 기초로 마무리할 수 있도록 적극적인 수강을 권장드립니다."
+    },
+    "중2": {
+      intro: "다가오는 2학기 기말고사에서 확실한 성적 향상을 이끌어내고 실전 경쟁력을 높이기 위해 [중2 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "이번 기말고사 범위에서 학생들이 어려움을 느끼기 쉬운 부분은 '닮음과 피타고라스 정리의 도형 응용 문제'와 '경우의 수와 확률의 조건 해석'입니다.\n\n먼저 도형의 닮음 단원은 닮은 도형을 찾는 것 자체보다, 복잡한 도형 속에서 어떤 두 삼각형이 닮음인지 스스로 발견하고 비례식을 세우는 과정이 핵심입니다. 평행선과 선분의 길이의 비, 삼각형의 무게중심, 닮음비와 넓이비·부피비의 관계가 한 문제에 함께 등장하면, 각 개념을 따로 알고 있어도 어느 것을 먼저 적용해야 할지 방향을 잡지 못하는 학생이 많습니다. 이어지는 피타고라스 정리 단원은 공식은 단순하지만 직각삼각형을 직접 만들어야 하는 평면·입체 도형 문제, 좌표 위의 거리 문제 등으로 변형되어 출제되기 때문에, 보조선을 긋고 조건을 재구성하는 훈련이 없으면 득점으로 이어지기 어렵습니다.\n\n또한, 경우의 수와 확률 단원은 중학교 수학 중 학생들이 가장 '감'으로 풀다가 틀리는 단원입니다. 합의 법칙과 곱의 법칙을 구분하고, 순서를 고려해야 하는지, 중복을 허용하는지, \"적어도\"라는 조건이 붙는지에 따라 풀이가 완전히 달라지는데, 문제 조건을 끝까지 정확히 읽지 않으면 계산은 맞아도 답이 틀리는 경우가 반복됩니다. 이 단원은 고2 확률과 통계로 그대로 연결되는 핵심 개념이고, 닮음과 피타고라스 정리는 중3 삼각비·원의 성질과 고1 도형의 방정식의 기반이 되는 만큼, 지금 다양한 유형을 충분히 경험해 체화시켜 두는 것이 중요합니다.",
+      list: "① 복잡한 도형 속 닮음 발견 및 비례식·넓이비 응용 훈련\n② 보조선을 활용한 피타고라스 정리 평면·입체 응용문제 해결 훈련\n③ 조건 해석 중심의 경우의 수·확률 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      closing: "정규 수업에서 다룬 핵심 개념을 바탕으로, 추가적인 유형 학습과 응용문제 훈련을 통해 실전 문제 해결력을 높일 예정입니다. 특히 중2 2학기 기말고사는 중학교 도형의 핵심이 모두 모이는 시험이자, 중3과 고등 수학으로 넘어가기 전 기초가 얼마나 다져졌는지 확인하는 시험입니다. 이번 특강을 통해 핵심 개념부터 고난도 응용까지 체계적으로 정리하고, 중2 과정을 보다 좋은 성적으로 마무리할 수 있도록 적극적인 수강을 권장드립니다."
+    },
+    "중3A": {
+      intro: "다가오는 2학기 기말고사에서 확실한 성적 향상을 이끌어내고 실전 경쟁력을 높이기 위해 [중3 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "이번 기말고사 범위에서 학생들이 어려움을 느끼기 쉬운 부분은 '삼각비의 활용 문제'와 '원의 성질에서 보조선을 활용한 응용·심화 문제'입니다.\n\n먼저 삼각비 단원은 특수각의 삼각비 값을 외우는 것은 어렵지 않지만, 실제 시험에서는 건물의 높이, 두 지점 사이의 거리, 삼각형과 사각형의 넓이처럼 직각삼각형이 숨어 있는 도형 문제로 출제됩니다. 어디에 수선을 내려 직각삼각형을 만들지, 어떤 각의 삼각비를 써야 하는지를 스스로 판단해야 하기 때문에, 공식을 알고 있어도 문제 상황을 도형으로 옮기지 못하면 손을 대기 어렵습니다.\n\n또한, 원의 성질 단원은 중학교 도형의 마지막이자 가장 많은 성질이 한꺼번에 등장하는 단원입니다. 원의 중심과 현, 접선의 길이, 원주각과 중심각의 관계, 원에 내접하는 사각형, 접선과 현이 이루는 각, 네 점이 한 원 위에 있을 조건까지 각각의 성질은 이해하더라도, 한 문제에 세 가지 이상의 성질이 결합되면 어떤 보조선을 그어야 할지 방향을 잡지 못하는 학생이 많습니다. 특히 원주각의 활용 문제는 '한 원 위의 네 점'이라는 조건을 발견하는 것 자체가 풀이의 출발점이어서, 충분한 유형 경험 없이는 접근이 어렵습니다. 삼각비는 고2 삼각함수로, 원의 성질은 고1 도형의 방정식과 원의 방정식으로 직접 연결되는 핵심 개념인 만큼, 고등학교 진학 전에 확실히 체화시켜 두는 것이 중요합니다.",
+      list: "① 삼각비의 핵심 개념 및 높이·거리·넓이 활용 문제 해결 훈련\n② 원과 현·접선 성질이 결합된 보조선 활용 응용문제 훈련\n③ 원주각의 성질과 활용(내접사각형·접선과 현) 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      closing: "정규 수업에서 다룬 핵심 개념을 바탕으로, 추가적인 유형 학습과 응용문제 훈련을 통해 실전 문제 해결력을 높일 예정입니다. 특히 이번 기말고사는 중학교 내신을 마무리하는 마지막 시험인 만큼, 부족한 부분을 보완하고 고등학교 수학으로 이어지는 기초를 완성하는 것이 중요합니다. 이번 특강을 통해 핵심 개념부터 고난도 응용까지 체계적으로 정리하고, 중학교 내신을 보다 좋은 성적으로 마무리할 수 있도록 적극적인 수강을 권장드립니다."
+    },
+    "중3B": {
+      intro: "다가오는 2학기 기말고사에서 확실한 성적 향상을 이끌어내고 실전 경쟁력을 높이기 위해 [중3 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "이번 기말고사 범위에서 학생들이 어려움을 느끼기 쉬운 부분은 '원의 성질에서 보조선을 활용한 응용·심화 문제'와 '통계 단원의 계산 정확도와 자료 해석'입니다.\n\n먼저 원의 성질 단원은 중학교 도형의 마지막이자 가장 많은 성질이 한꺼번에 등장하는 단원입니다. 원의 중심과 현, 접선의 길이, 원주각과 중심각의 관계, 원에 내접하는 사각형, 접선과 현이 이루는 각, 네 점이 한 원 위에 있을 조건까지 각각의 성질은 이해하더라도, 한 문제에 세 가지 이상의 성질이 결합되면 어떤 보조선을 그어야 할지 방향을 잡지 못하는 학생이 많습니다. 특히 원주각의 활용 문제는 '한 원 위의 네 점'이라는 조건을 발견하는 것 자체가 풀이의 출발점이어서, 충분한 유형 경험 없이는 접근이 어렵습니다.\n\n또한, 통계 단원은 '쉬운 단원'이라고 생각하고 넘어갔다가 시험에서 가장 많이 점수를 잃는 단원입니다. 평균·중앙값·최빈값을 조건에 맞게 역으로 구하는 문제, 분산과 표준편차를 변량이 변형된 자료에서 구하는 문제, 두 집단의 자료를 합쳐 다시 계산하는 문제는 개념이 아니라 계산 과정의 정확성과 조건 해석에서 승부가 갈립니다. 산점도와 상관관계 역시 그래프를 읽고 조건을 만족하는 점의 개수를 세거나 상관관계의 종류를 판단하는 문제에서 작은 실수가 반복됩니다. 원의 성질은 고1 도형의 방정식과 원의 방정식으로, 통계는 고2 확률과 통계로 직접 연결되는 핵심 개념인 만큼, 고등학교 진학 전에 확실히 체화시켜 두는 것이 중요합니다.",
+      list: "① 원과 현·접선 성질이 결합된 보조선 활용 응용문제 훈련\n② 원주각의 성질과 활용(내접사각형·접선과 현) 집중 훈련\n③ 대푯값·산포도의 조건 해석 및 산점도·상관관계 응용 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      closing: "정규 수업에서 다룬 핵심 개념을 바탕으로, 추가적인 유형 학습과 응용문제 훈련을 통해 실전 문제 해결력을 높일 예정입니다. 특히 이번 기말고사는 중학교 내신을 마무리하는 마지막 시험인 만큼, 부족한 부분을 보완하고 고등학교 수학으로 이어지는 기초를 완성하는 것이 중요합니다. 이번 특강을 통해 핵심 개념부터 고난도 응용까지 체계적으로 정리하고, 중학교 내신을 보다 좋은 성적으로 마무리할 수 있도록 적극적인 수강을 권장드립니다."
+    },
+    "고1": {
+      intro: "다가오는 2학기 기말고사에서 확실한 성적 향상을 이끌어내고 실전 경쟁력을 높이기 위해 [고1 공통수학2 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "이번 기말고사 범위에서 학생들이 어려움을 느끼기 쉬운 부분은 '명제의 논리적 이해'와 '함수 단원의 응용·심화 문제'입니다.\n\n먼저 명제 단원은 필요조건과 충분조건을 정확하게 구분하고, 명제의 참·거짓을 판단하거나 절대부등식을 증명하는 과정에서 논리구조를 파악하고 주어진 조건을 적절하게 활용하는 능력이 필요합니다. 단순히 용어와 개념을 암기하는 것만으로는 조건이 복합적으로 주어진 문제나 반례를 찾아 능동적으로 증명하여 풀어내야 하는 문제에는 대응하기 어렵습니다.\n\n또한, 함수 단원에서는 합성함수와 역함수의 성질을 정확하게 이해하고, 주어진 조건에 맞게 식을 변형하는 능력이 중요합니다. 특히 두 개념이 복합적으로 결합된 문제는 여러 개념을 동시에 적용해야 하므로, 기본 개념을 알고 있더라도 조건이 복잡해지면 풀이 방향을 잡지 못하는 학생들이 많습니다. 함수의 합성과 역함수 개념은 이후 과정인 고2 대수 및 다양한 내신·모의고사에서도 지속적으로 연계되는 핵심 개념인 만큼, 다양한 유형에 적용하고 미리 체화시키는 훈련을 충분히 해두는 것이 중요합니다. 더불어 유리함수와 무리함수는 그래프의 평행이동과 대칭, 점근선, 정의역과 치역, 직선과의 위치 관계 등을 종합적으로 이해해야 하는 단원으로, 앞선 도형의 방정식에서 좌표와 그래프를 연결하거나 도형을 해석하는 데 어려움을 겪은 학생들은 더욱 큰 어려움을 느낄 수 있습니다. 따라서 식과 그래프의 관계를 정확히 해석하고, 여러 조건을 종합해 풀이 전략을 세우는 훈련이 필요합니다.",
+      list: "① 명제와 절대부등식의 핵심 개념 및 논리적 접근 훈련\n② 합성함수와 역함수가 복합적으로 결합된 응용문제 해결 훈련\n③ 유리함수·무리함수 그래프 해석 및 응용 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      closing: "정규 수업에서 다룬 핵심 개념을 바탕으로, 추가적인 유형 학습과 응용문제 훈련을 통해 실전 문제 해결력을 높일 예정입니다. 특히 이번 기말고사는 고1 내신을 마무리하는 중요한 시험인 만큼, 부족한 부분을 보완하고 학습 완성도를 높여 마지막까지 최선의 결과를 만들어내는 것이 중요합니다. 이번 특강을 통해 핵심 개념부터 고난도 응용까지 체계적으로 정리하고, 고1 내신을 보다 좋은 성적으로 마무리할 수 있도록 적극적인 수강을 권장드립니다."
+    },
+    "고2": {
+      intro: "다가오는 2학기 기말고사에서 확실한 성적 향상을 이끌어내고 실전 경쟁력을 높이기 위해 [고2 미적분Ⅰ 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "이번 기말고사 범위에서 학생들이 어려움을 느끼기 쉬운 부분은 '도함수의 활용에서 그래프 개형을 그려 조건을 해석하는 문제'와 '정적분의 성질과 활용이 결합된 응용·심화 문제'입니다.\n\n먼저 다항함수의 미분법은 실수배·합·차·곱의 미분법으로 도함수를 구하는 것 자체는 어렵지 않지만, 미분가능성 조건이나 미분계수의 정의를 이용해 미정계수를 구하는 문제에서는 계산보다 조건 해석에서 막히는 학생이 많습니다. 이어지는 도함수의 활용은 이번 범위에서 가장 배점이 높고 가장 어려운 부분입니다. 접선의 방정식, 평균값 정리, 함수의 증가·감소와 극대·극소, 그래프의 개형, 최대·최소, 방정식과 부등식에의 활용, 속도와 가속도까지 모두 '도함수를 구한 뒤 그래프를 그려 조건을 해석하는' 하나의 흐름으로 이어지기 때문에, 미분 계산은 되지만 그려진 그래프에서 조건을 읽어내지 못해 풀이를 이어가지 못하는 경우가 많습니다. 특히 삼차·사차함수의 극값 조건, 방정식의 실근의 개수, 부등식이 항상 성립할 조건을 묻는 문제는 정확한 개형과 조건의 번역이 함께 되어야 풀리는 대표적인 고난도 유형입니다.\n\n또한, 적분 단원은 부정적분과 정적분을 구하는 계산은 곧 익숙해지지만, 정적분의 성질(대칭성·구간 나누기·주기성), 정적분으로 정의된 함수와 미분의 관계, 정적분과 넓이의 관계가 결합된 문제에서 점수 차이가 크게 벌어집니다. 정적분의 활용에서는 곡선과 좌표축 사이의 넓이, 두 곡선 사이의 넓이, 속도와 거리 문제가 앞선 도함수의 활용(그래프 개형)과 결합되어 출제되므로, 미분과 적분 전체를 하나의 흐름으로 다루는 종합 사고력이 요구됩니다. 미적분Ⅰ은 대수·확률과 통계와 함께 수능 공통 범위에 포함되는 과목인 만큼, 지금 기말고사 범위를 완성도 있게 정리하는 것이 곧 수능 대비의 출발점입니다.",
+      list: "① 다항함수의 미분법과 미분가능성·미분계수 조건 해석 훈련\n② 그래프 개형 해석 중심의 도함수의 활용(극값·실근 개수·부등식) 응용문제 해결 훈련\n③ 정적분의 성질·정적분으로 정의된 함수와 정적분의 활용(넓이·속도와 거리) 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      closing: "정규 수업에서 다룬 핵심 개념을 바탕으로, 추가적인 유형 학습과 응용문제 훈련을 통해 실전 문제 해결력을 높일 예정입니다. 특히 이번 기말고사는 고2 내신을 마무리하는 중요한 시험이자, 수능 공통 범위인 미적분Ⅰ의 핵심이 모두 포함된 시험인 만큼, 부족한 부분을 보완하고 학습 완성도를 높여 마지막까지 최선의 결과를 만들어내는 것이 중요합니다. 이번 특강을 통해 핵심 개념부터 고난도 응용까지 체계적으로 정리하고, 고2 내신을 보다 좋은 성적으로 마무리할 수 있도록 적극적인 수강을 권장드립니다."
+    }
+  };
+
+  // Emotional templates: intro, body (replaces gap+body), list, goal, closing.
+  var EMO = {
+    "중1": {
+      intro: "중학교에 올라와 처음 맞는 1년이 어느새 마지막 시험을 앞두고 있습니다. 아이가 이 한 해를 '해냈다'는 기억으로 마무리할 수 있도록 [중1 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "중1 아이들을 가르치다 보면 자주 보게 되는 장면이 있습니다. 합동 조건도 알고, 부피 공식도 외웠는데, 막상 시험지 앞에서는 \"이게 뭘 물어보는 건지 모르겠어요\"라며 멈춰 서는 모습입니다. 초등학교까지는 공식에 숫자를 넣으면 답이 나왔는데, 중학교 도형은 처음으로 '왜 그런지'를 스스로 설명해야 하는 수학입니다. 아이 입장에서는 갑자기 규칙이 바뀐 것처럼 느껴질 수밖에 없습니다.\n\n그래서 이 시기의 아이들은 수학이 어려워서가 아니라, 어떻게 시작해야 할지 몰라서 손을 놓습니다. 그리고 그 경험이 쌓이면 \"나는 도형을 못해\"라는 생각이 자리 잡고, 중2·중3으로 갈수록 그 생각이 점점 단단해집니다. 중1 2학기 기말고사가 중요한 이유는 점수 그 자체보다, 아이가 어려운 문제 앞에서 \"한번 해볼까\"와 \"나는 안 돼\" 중 어느 쪽 태도를 가지고 중2로 올라가느냐를 결정하는 시험이기 때문입니다.\n\n학부모님께서 옆에서 지켜보시면서도 가장 도와주기 어려운 부분이 바로 이 지점일 것입니다. 틀린 문제를 다시 풀어보라고 할 수는 있어도, 왜 거기서 막혔는지, 어떤 조건을 놓쳤는지를 아이 눈높이에서 짚어주는 일은 쉽지 않습니다. 그 역할을 이번 특강에서 제가 맡겠습니다.",
+      list: "① 작도·합동과 평면도형의 핵심 개념 및 서술형 논리 전개 훈련\n② 변형된 입체도형의 겉넓이·부피 응용문제 해결 훈련\n③ 도수분포표·히스토그램·상대도수의 해석 및 응용 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      goal: "를 통해 아이가 어려운 문제를 만났을 때 막막해하는 대신, 조건을 하나씩 읽어가며 \"이건 이렇게 시작하면 되겠다\"고 스스로 말할 수 있게 만드는 것이 이번 특강의 목표입니다.",
+      closing: "정규 수업에서 쌓아온 개념 위에, 시험장에서 실제로 손이 움직이는 훈련을 더하려고 합니다. 아이가 중학교 첫해를 \"수학 괜찮았어\"라는 말로 마무리할 수 있다면, 그 한마디가 앞으로 2년의 출발선을 바꿉니다. 그 출발선을 함께 만들어드리고 싶습니다. 적극적인 수강을 권장드립니다."
+    },
+    "중2": {
+      intro: "중2 2학기 기말고사, 아이에게도 학부모님께도 유난히 마음이 쓰이는 시험이라는 것을 잘 알고 있습니다. 아이가 이 시험을 자신감으로 마무리할 수 있도록 [중2 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "중2는 수학에서 '갈림길'이 되는 시기입니다. 이번 범위의 닮음과 피타고라스 정리는 도형 속에서 스스로 보조선을 긋고 관계를 찾아내야 하고, 경우의 수와 확률은 문제를 끝까지 읽고 조건을 해석해야 답이 나옵니다. 개념을 아는 것과 문제가 풀리는 것 사이의 거리가 가장 크게 벌어지는 것이 바로 이 단원들입니다. 그래서 성실하게 공부하는 아이가 \"열심히 했는데 왜 점수가 안 나오지\"라며 처음으로 좌절을 경험하는 시기이기도 합니다.\n\n이 시기 아이들의 마음은 생각보다 쉽게 흔들립니다. 몇 번의 틀린 경험이 \"나는 도형이 약해\", \"확률은 그냥 찍는 거야\"라는 생각으로 굳어지고, 그 생각을 안고 중3과 고등학교로 올라가면 되돌리기가 훨씬 어려워집니다. 반대로 지금 \"어, 이거 되네\"라는 경험을 한 번 하면, 아이는 수학을 대하는 태도 자체가 달라집니다.\n\n학부모님께서 아이에게 \"조금만 더 해보자\"라고 말씀하시는 것이 얼마나 조심스러운 일인지도 잘 알고 있습니다. 그 말이 잔소리로 들리지 않게 하는 방법은, 아이가 스스로 풀어내는 경험을 쌓게 해주는 것밖에 없습니다. 그 경험을 만들어주는 것이 이번 특강에서 제가 할 일입니다.",
+      list: "① 복잡한 도형 속 닮음 발견 및 비례식·넓이비 응용 훈련\n② 보조선을 활용한 피타고라스 정리 평면·입체 응용문제 해결 훈련\n③ 조건 해석 중심의 경우의 수·확률 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      goal: "를 통해 아이가 어려운 문제 앞에서 \"모르겠어\"로 멈추지 않고, 조건을 분석해 풀이의 실마리를 스스로 찾아내는 힘을 길러주는 것이 이번 특강의 목표입니다.",
+      closing: "정규 수업에서 다져온 개념을 바탕으로, 시험에서 실제로 점수가 되는 훈련을 집중적으로 하려고 합니다. 중2 기말고사는 아이가 \"나 수학 할 수 있어\"라는 믿음을 가지고 중3으로 올라갈 수 있는 마지막 기회입니다. 그 믿음을 함께 만들어드리고 싶습니다. 적극적인 수강을 권장드립니다."
+    },
+    "중3": {
+      intro: "중학교 3년의 마지막 시험이 다가오고 있습니다. 아이가 중학교를 떳떳한 마무리와 단단한 준비로 끝낼 수 있도록 [중3 2학기 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "중3 2학기가 되면 아이들 사이에 두 가지 분위기가 생깁니다. \"어차피 고등학교 가면 다시 배운다\"며 마음이 먼저 떠나는 아이, 그리고 고등학교 수학이 얼마나 어려워지는지 어렴풋이 알기에 불안해하는 아이입니다. 그런데 이번 범위의 삼각비, 원의 성질, 통계는 고등학교에서 '다시 배우는' 내용이 아니라 '알고 있다고 전제하고 넘어가는' 내용입니다. 고1 도형의 방정식, 고2 삼각함수와 확률과 통계가 모두 여기서 출발합니다. 지금 비어 있는 부분은 고등학교에 가서 그대로 구멍으로 남습니다.\n\n그래서 이번 기말고사는 중학교 성적표의 마지막 줄 이상의 의미가 있습니다. 아이가 \"중학교 수학은 내가 제대로 끝냈다\"는 확신을 가지고 고등학교 교실에 들어가느냐, 아니면 \"나는 원래 도형이 약했어\"라는 불안을 안고 들어가느냐가 갈리는 시험입니다. 고등학교 첫 중간고사에서 아이의 마음을 지탱해주는 것은 결국 중3 겨울에 만들어둔 이 확신입니다.\n\n학부모님께서도 요즘 아이에게 공부 이야기를 꺼내기가 쉽지 않으실 것입니다. 졸업을 앞둔 아이에게 \"마지막까지 해보자\"는 말이 닿기 어렵다는 것도 압니다. 그래서 이 시기에는 아이에게 \"해야 한다\"고 말하는 사람보다, 옆에서 \"이건 이렇게 하면 돼\"라고 같이 풀어주는 사람이 필요합니다. 그 역할을 이번 특강에서 제가 맡겠습니다.",
+      list: "① 삼각비·원의 성질 핵심 개념 및 보조선 활용 응용문제 훈련\n② 원주각의 성질과 활용(내접사각형·접선과 현) 집중 훈련\n③ 대푯값·산포도·상관관계의 조건 해석 및 응용 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      goal: "를 통해 아이가 어려운 문제 앞에서 막막해하는 대신, 조건을 분석하고 풀이 방향을 스스로 찾아내는 힘을 가지고 고등학교로 올라갈 수 있게 하는 것이 이번 특강의 목표입니다.",
+      closing: "정규 수업에서 쌓아온 개념 위에, 시험에서 실제로 점수가 되는 훈련과 고등학교로 이어지는 기초를 함께 다지려고 합니다. 중학교 3년을 \"끝까지 잘했다\"는 말로 마무리하는 경험은 아이에게 오래 남습니다. 그 마무리를 함께 만들어드리고 싶습니다. 적극적인 수강을 권장드립니다."
+    },
+    "고1": {
+      intro: "고등학교 첫 1년의 마지막 시험이 다가오고 있습니다. 아이가 고1 내신을 후회 없이 마무리할 수 있도록 [고1 공통수학2 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "고1 2학기 기말을 앞둔 아이들의 표정은 1학기 때와 많이 다릅니다. 중학교 때와는 비교할 수 없는 시험 난도를 두 번 겪고 나면, 아이들은 \"열심히 해도 안 되는 과목이 있다\"는 것을 처음으로 실감합니다. 이번 범위의 명제는 외워서 되는 단원이 아니라 논리를 따져야 하고, 합성함수·역함수, 유리·무리함수는 개념을 알아도 조건이 조금만 복잡해지면 손이 멈춥니다. 시험 전날까지 문제집을 붙잡고 있는데도 \"뭘 더 해야 할지 모르겠어\"라고 말하는 아이들이 가장 많은 시기가 바로 지금입니다.\n\n이 시험이 중요한 이유는 고1 내신의 마지막 숫자를 결정하기 때문만이 아닙니다. 이번 범위의 함수 개념은 고2 대수와 그 이후까지 계속 따라오는 뿌리이고, 무엇보다 아이가 \"나는 고등 수학에서도 해낼 수 있다\"는 확신을 가지고 고2로 올라가느냐를 결정하는 시험이기 때문입니다. 고2는 선택과목이 갈리고 난도가 한 번 더 뛰는 시기여서, 지금 만들어둔 확신이 없으면 그때 버티기가 훨씬 어렵습니다.\n\n학부모님께서는 아이가 책상 앞에 앉아 있는 모습은 보셔도, 그 앞에서 어디에 막혀 있는지는 보실 수 없을 것입니다. 그리고 그 막힌 곳을 풀어주는 일은 학부모님께서 하고 싶어도 하실 수 없는 영역입니다. 그래서 그 역할은 제가 맡겠습니다.",
+      list: "① 명제와 절대부등식의 핵심 개념 및 논리적 접근 훈련\n② 합성함수와 역함수가 복합적으로 결합된 응용문제 해결 훈련\n③ 유리함수·무리함수 그래프 해석 및 응용 유형 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      goal: "를 통해 아이가 어려운 문제 앞에서 막막해하는 대신, 주어진 조건을 분석하고 풀이 방향을 스스로 찾아내는 힘을 길러주는 것이 이번 특강의 목표입니다.",
+      closing: "정규 수업에서 다져온 개념을 바탕으로, 시험장에서 실제로 점수가 되는 훈련을 집중적으로 하려고 합니다. 고1을 \"마지막 시험 잘 봤다\"는 기억으로 끝내는 것과 아쉬움으로 끝내는 것은, 고2를 시작하는 아이의 마음가짐을 완전히 다르게 만듭니다. 그 마무리를 함께 만들어드리고 싶습니다. 적극적인 수강을 권장드립니다."
+    },
+    "고2": {
+      intro: "고3을 앞둔 마지막 정기고사가 다가오고 있습니다. 아이가 고2를 후회 없이 마무리하고 수능 준비의 첫걸음을 제대로 내딛을 수 있도록 [고2 미적분Ⅰ 기말고사 대비 특강]을 개설하게 되었습니다.",
+      body: "고2 2학기, 미적분Ⅰ을 배우는 아이들은 여기까지 오는 동안 이미 많은 것을 견뎌왔습니다. 그런데 이번 범위의 도함수의 활용과 적분은 그동안 잘 따라오던 아이들조차 \"이건 정말 모르겠다\"고 처음으로 고개를 떨구게 만드는 구간입니다. 미분은 되는데 그래프가 안 그려지고, 적분 계산은 되는데 정적분으로 정의된 함수가 나오면 손이 멈추고, 문제를 읽으면 조건이 세 겹으로 쌓여 있습니다. 시험이 끝나고 \"미적분은 나랑 안 맞나 봐\"라는 말이 나오는 것이 이 시기입니다.\n\n그 말은 성적표가 아니라 아이의 자신감에 남습니다. 그리고 고3이 되면 그 자신감이 수능까지 1년을 버티게 하는 거의 유일한 힘입니다. 미적분Ⅰ은 수능 공통 범위에 들어가는 과목이어서 고3 내내 다시 마주하게 되는데, 지금 이 범위를 \"어려웠지만 해냈다\"로 정리하느냐, \"결국 못했다\"로 남기느냐가 고3 한 해의 출발점을 바꿉니다.\n\n학부모님께서는 아이가 밤늦게까지 책상에 앉아 있는 뒷모습만 보실 수 있을 것입니다. 무슨 말을 해도 부담이 될까 조심스러우실 것이고, 수학 내용을 직접 봐주실 수도 없는 영역입니다. 그 자리를 이번 특강에서 제가 채우겠습니다. 어디서 막히는지 정확히 찾아내고, 아이가 스스로 뚫고 나가는 경험을 만들어주는 것이 제 역할입니다.",
+      list: "① 다항함수의 미분법과 미분가능성·미분계수 조건 해석 훈련\n② 그래프 개형 해석 중심의 도함수의 활용(극값·실근 개수·부등식) 응용문제 해결 훈련\n③ 정적분의 성질·정적분으로 정의된 함수와 정적분의 활용(넓이·속도와 거리) 집중 훈련\n④ 타 학교 실제 내신 기출 및 고난도·변형 문제를 통한 실전 대비",
+      goal: "를 통해 아이가 고난도 문제 앞에서 막막해하는 대신, 조건을 분석하고 풀이의 흐름을 스스로 설계하는 힘을 길러주는 것이 이번 특강의 목표입니다.",
+      closing: "정규 수업에서 쌓아온 개념 위에, 시험장에서 실제로 점수가 되는 훈련을 집중적으로 하려고 합니다. 고2 마지막 시험을 \"해냈다\"는 기억으로 마무리하는 아이는 고3을 다른 마음으로 시작합니다. 그 출발선을 함께 만들어드리고 싶습니다. 적극적인 수강을 권장드립니다."
+    }
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var out = $("out"), what = $("what"), count = $("count"), copied = $("copied");
+  var teacher = $("teacher"), rangeBox = $("rangeBox"), imgMark = $("imgMark"), product = $("product");
+  var dirty = false; // true once the user hand-edits the textarea
+
+  function val(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : "";
+  }
+
+  function linkBlock() {
+    var p = PRODUCTS[product.value];
+    if (!p) return "";
+    var days = val("days");
+    var slots = days === "both" ? ["주간", "주말"] : [days];
+    var parts = ["━━━━━━━━━━━━━━━", "▶ 기말 내신특강 수강 신청 (결제링크)"];
+    slots.forEach(function (d) {
+      parts.push("");
+      parts.push("[" + d + "] " + p.name + " (" + p.weeks + " / 총 " + p.hours + ")");
+      parts.push(p[d]);
+    });
+    parts.push("");
+    parts.push("원하시는 시간대의 링크로 신청해 주시면 됩니다. 궁금한 점은 언제든 편하게 말씀해 주세요.");
+    return parts.join("\n");
+  }
+
+  function build() {
+    var grade = val("grade"), tone = val("tone");
+    var name = teacher.value.trim() || "[    ]";
+    var greeting = GREETING.replace("{NAME}", name);
+    var img = imgMark.checked ? "\n\n(이미지 2개)" : "";
+    var text;
+    if (tone === "info") {
+      var key = grade === "중3" ? "중3" + val("range") : grade;
+      var t = INFO[key];
+      text = [greeting + "\n" + t.intro + img, t.body, COMMON_GAP, t.list + "\n\n" + COMMON_GOAL, t.closing].join("\n\n");
+    } else {
+      var e = EMO[grade];
+      text = [greeting + "\n" + e.intro + img, e.body, e.list + "\n\n" + e.goal, e.closing].join("\n\n");
+    }
+    var links = linkBlock();
+    if (links) text += "\n\n" + links;
+    return text;
+  }
+
+  function render(force) {
+    if (dirty && !force) return;
+    dirty = false;
+    out.value = build();
+    var grade = val("grade"), tone = val("tone");
+    var rangeTxt = (grade === "중3" && tone === "info") ? (val("range") === "A" ? " · 삼각비~원주각" : " · 원의 성질~통계") : "";
+    what.innerHTML = grade + rangeTxt + " · " + (tone === "info" ? "정보형" : "감성형") +
+      "<small>" + (LABELS[product.value] ? LABELS[product.value] + " 링크 포함" : "링크 없음") + "</small>";
+    updateCount();
+    copied.textContent = "";
+  }
+  function updateCount() { count.textContent = out.value.length.toLocaleString("ko-KR") + "자"; }
+
+  function applyGradeDefaults() {
+    var grade = val("grade");
+    product.value = grade.charAt(0) === "중" ? "MM" : "MH";
+    rangeBox.hidden = !(grade === "중3" && val("tone") === "info");
+  }
+
+  document.querySelectorAll('input[name="grade"]').forEach(function (r) {
+    r.addEventListener("change", function () { applyGradeDefaults(); render(true); });
+  });
+  document.querySelectorAll('input[name="tone"]').forEach(function (r) {
+    r.addEventListener("change", function () { rangeBox.hidden = !(val("grade") === "중3" && val("tone") === "info"); render(true); });
+  });
+  document.querySelectorAll('input[name="range"], input[name="days"], #product, #imgMark').forEach(function (el) {
+    el.addEventListener("change", function () { render(true); });
+  });
+  teacher.addEventListener("input", function () {
+    try { localStorage.setItem("ment-teacher", teacher.value); } catch (e) {}
+    render(true);
+  });
+  out.addEventListener("input", function () { dirty = true; updateCount(); copied.textContent = "직접 수정됨 · '다시 생성'을 누르면 설정값으로 되돌립니다"; copied.className = ""; });
+
+  $("resetBtn").addEventListener("click", function () { render(true); });
+  $("copyBtn").addEventListener("click", function () {
+    var text = out.value;
+    function done(ok) {
+      copied.textContent = ok ? "복사됐습니다. 카톡·문자에 붙여넣기 하세요." : "복사 권한이 없어 본문을 선택했습니다. ⌘C / Ctrl+C로 복사하세요.";
+      copied.className = ok ? "ok" : "";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { out.focus(); out.select(); done(false); });
+    } else { out.focus(); out.select(); done(false); }
+  });
+
+  try { var saved = localStorage.getItem("ment-teacher"); if (saved) teacher.value = saved; } catch (e) {}
+  applyGradeDefaults();
+  render(true);
+})();
+</script>
+
+</body></html>
